@@ -1,31 +1,31 @@
 ## HW5 Class/Methods
 
+## Class definition ----------------------------------------------------
 
 setClass(
   Class = "sparse_numeric",
   slots = c(
-    value  = "numeric",
-    pos    = "integer",
+    value = "numeric",
+    pos = "integer",
     length = "integer"
   )
 )
 
+## Validity method -----------------------------------------------------
+
 setValidity("sparse_numeric", function(object) {
-  len  <- object@length
-  pos  <- object@pos
+  len <- object@length
+  pos <- object@pos
   vals <- object@value
   
-  ## length: single non-negative integer
   if (length(len) != 1L || is.na(len) || len < 0L) {
     return("slot 'length' must be a single non-negative integer")
   }
   
-  ## value and pos must match in length
   if (length(vals) != length(pos)) {
     return("slots 'value' and 'pos' must have the same length")
   }
   
-  ## if there are positions, check they are valid indices
   if (length(pos)) {
     if (anyNA(pos)) {
       return("slot 'pos' cannot contain NA")
@@ -38,26 +38,23 @@ setValidity("sparse_numeric", function(object) {
   TRUE
 })
 
+## Coercion methods ----------------------------------------------------
 
-## Coercion methods
-
-## numeric -> sparse_numeric
 setAs("numeric", "sparse_numeric", function(from) {
   n <- length(from)
   if (n == 0L) {
     return(new("sparse_numeric",
-               value  = numeric(0),
-               pos    = integer(0),
+               value = numeric(0),
+               pos = integer(0),
                length = 0L))
   }
   nz <- which(from != 0)
   new("sparse_numeric",
-      value  = if (length(nz) > 0L) from[nz] else numeric(0),
-      pos    = as.integer(nz),
+      value = if (length(nz) > 0L) from[nz] else numeric(0),
+      pos = as.integer(nz),
       length = as.integer(n))
 })
 
-## sparse_numeric -> numeric
 setAs("sparse_numeric", "numeric", function(from) {
   out <- numeric(from@length)
   if (length(from@pos) > 0L) {
@@ -66,7 +63,7 @@ setAs("sparse_numeric", "numeric", function(from) {
   out
 })
 
-## Helper method that checks matching length
+## Helper: check matching length ---------------------------------------
 
 .check_same_length <- function(x, y) {
   if (x@length != y@length) {
@@ -74,65 +71,58 @@ setAs("sparse_numeric", "numeric", function(from) {
   }
 }
 
-## Generics
+## Generics ------------------------------------------------------------
 
-setGeneric("sparse_add", function(x, y, ...) standardGeneric("sparse_add"))
-setGeneric("sparse_mult", function(x, y, ...) standardGeneric("sparse_mult"))
-setGeneric("sparse_sub",  function(x, y, ...) standardGeneric("sparse_sub"))
-setGeneric("sparse_crossprod", function(x, y, ...) standardGeneric("sparse_crossprod"))
+setGeneric("sparse_add", function(x, y) standardGeneric("sparse_add"))
+setGeneric("sparse_mult", function(x, y) standardGeneric("sparse_mult"))
+setGeneric("sparse_sub", function(x, y) standardGeneric("sparse_sub"))
+setGeneric("sparse_crossprod", function(x, y) standardGeneric("sparse_crossprod"))
 
+## sparse_add, sparse_sub, sparse_mult, sparse_crossprod ---------------
 
-## sparse_add, sparse_mult, sparse_subm sparse_crossprod
-
-## Addition
 setMethod("sparse_add",
           signature(x = "sparse_numeric", y = "sparse_numeric"),
-          function(x, y, ...) {
+          function(x, y) {
             .check_same_length(x, y)
             
-            # both all-zero
             if (length(x@pos) == 0L && length(y@pos) == 0L) {
               return(new("sparse_numeric",
-                         value  = numeric(0),
-                         pos    = integer(0),
+                         value = numeric(0),
+                         pos = integer(0),
                          length = x@length))
             }
             
-            # combine positions and values, then sum by position
             all_pos <- c(x@pos, y@pos)
             all_val <- c(x@value, y@value)
             
             sums <- tapply(all_val, all_pos, sum)
             
-            pos  <- as.integer(names(sums))
+            pos <- as.integer(names(sums))
             vals <- as.numeric(sums)
             
             nz <- vals != 0
             if (!any(nz)) {
               new("sparse_numeric",
-                  value  = numeric(0),
-                  pos    = integer(0),
+                  value = numeric(0),
+                  pos = integer(0),
                   length = x@length)
             } else {
               new("sparse_numeric",
-                  value  = vals[nz],
-                  pos    = pos[nz],
+                  value = vals[nz],
+                  pos = pos[nz],
                   length = x@length)
             }
           })
 
-
-
-## Subtraction
 setMethod("sparse_sub",
           signature(x = "sparse_numeric", y = "sparse_numeric"),
-          function(x, y, ...) {
+          function(x, y) {
             .check_same_length(x, y)
             
             if (length(x@pos) == 0L && length(y@pos) == 0L) {
               return(new("sparse_numeric",
-                         value  = numeric(0),
-                         pos    = integer(0),
+                         value = numeric(0),
+                         pos = integer(0),
                          length = x@length))
             }
             
@@ -141,83 +131,81 @@ setMethod("sparse_sub",
             
             diffs <- tapply(all_val, all_pos, sum)
             
-            pos  <- as.integer(names(diffs))
+            pos <- as.integer(names(diffs))
             vals <- as.numeric(diffs)
             
             nz <- vals != 0
             if (!any(nz)) {
               new("sparse_numeric",
-                  value  = numeric(0),
-                  pos    = integer(0),
+                  value = numeric(0),
+                  pos = integer(0),
                   length = x@length)
             } else {
               new("sparse_numeric",
-                  value  = vals[nz],
-                  pos    = pos[nz],
+                  value = vals[nz],
+                  pos = pos[nz],
                   length = x@length)
             }
           })
 
-
-
-## Multiplication
 setMethod("sparse_mult",
           signature(x = "sparse_numeric", y = "sparse_numeric"),
-          function(x, y, ...) {
+          function(x, y) {
             .check_same_length(x, y)
             
             if (length(x@pos) == 0L || length(y@pos) == 0L) {
               return(new("sparse_numeric",
-                         value  = numeric(0),
-                         pos    = integer(0),
+                         value = numeric(0),
+                         pos = integer(0),
                          length = x@length))
             }
             
             pos_common <- intersect(x@pos, y@pos)
             if (length(pos_common) == 0L) {
               return(new("sparse_numeric",
-                         value  = numeric(0),
-                         pos    = integer(0),
+                         value = numeric(0),
+                         pos = integer(0),
                          length = x@length))
             }
             
             idx_x <- match(pos_common, x@pos)
             idx_y <- match(pos_common, y@pos)
-            vals  <- x@value[idx_x] * y@value[idx_y]
+            vals <- x@value[idx_x] * y@value[idx_y]
             
             nz <- which(vals != 0)
             if (length(nz) == 0L) {
               new("sparse_numeric",
-                  value  = numeric(0),
-                  pos    = integer(0),
+                  value = numeric(0),
+                  pos = integer(0),
                   length = x@length)
             } else {
               new("sparse_numeric",
-                  value  = vals[nz],
-                  pos    = as.integer(pos_common[nz]),
+                  value = vals[nz],
+                  pos = as.integer(pos_common[nz]),
                   length = x@length)
             }
           })
 
-## Cross product
 setMethod("sparse_crossprod",
           signature(x = "sparse_numeric", y = "sparse_numeric"),
-          function(x, y, ...) {
+          function(x, y) {
             .check_same_length(x, y)
             
             if (length(x@pos) == 0L || length(y@pos) == 0L) {
               return(0)
             }
+            
             pos_common <- intersect(x@pos, y@pos)
             if (length(pos_common) == 0L) {
               return(0)
             }
+            
             idx_x <- match(pos_common, x@pos)
             idx_y <- match(pos_common, y@pos)
             sum(x@value[idx_x] * y@value[idx_y])
           })
 
-## Operator methods (+, -, *)
+## Operator methods (+, -, *) -----------------------------------------
 
 setMethod("+", signature(e1 = "sparse_numeric", e2 = "sparse_numeric"),
           function(e1, e2) sparse_add(e1, e2))
@@ -225,13 +213,10 @@ setMethod("+", signature(e1 = "sparse_numeric", e2 = "sparse_numeric"),
 setMethod("-", signature(e1 = "sparse_numeric", e2 = "sparse_numeric"),
           function(e1, e2) sparse_sub(e1, e2))
 
-setMethod("*",
-          signature(e1 = "sparse_numeric", e2 = "sparse_numeric"),
-          function(e1, e2) {
-            sparse_mult(e1, e2)
-          })
+setMethod("*", signature(e1 = "sparse_numeric", e2 = "sparse_numeric"),
+          function(e1, e2) sparse_mult(e1, e2))
 
-## show() method
+## show() method -------------------------------------------------------
 
 setMethod("show", "sparse_numeric", function(object) {
   cat("An object of class 'sparse_numeric'\n")
@@ -239,7 +224,7 @@ setMethod("show", "sparse_numeric", function(object) {
   cat(" Non-zero entries:", length(object@value), "\n")
   if (length(object@pos) > 0L) {
     df <- data.frame(
-      pos   = object@pos,
+      pos = object@pos,
       value = object@value
     )
     print(df, row.names = FALSE)
@@ -248,27 +233,24 @@ setMethod("show", "sparse_numeric", function(object) {
   }
 })
 
-## plot() method
+## plot() method -------------------------------------------------------
 
 setMethod(
   "plot",
   signature(x = "sparse_numeric", y = "sparse_numeric"),
-  function(x, y, ...) {
+  function(x, y) {
     plot(x@pos, x@value, pch = 16, col = "blue",
          xlab = "Position", ylab = "Value",
-         main = "Sparse vectors (x in blue, y in red)", ...)
-    if (length(y@pos))
+         main = "Sparse vectors (x in blue, y in red)")
+    if (length(y@pos)) {
       points(y@pos, y@value, pch = 17, col = "red")
+    }
     invisible(NULL)
   }
 )
 
-
-## Additional method: length of sparse_numeric vectors
+## Additional method: length of sparse_numeric vectors -----------------
 
 setMethod("length", "sparse_numeric", function(x) {
   x@length
 })
-
-
-
